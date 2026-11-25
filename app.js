@@ -203,41 +203,49 @@
   }
 
   /* ───────── speech ───────── */
+  /* Pre-rendered clips (see tools/build-audio.sh) played through Web Audio.
+     The clip ends in silence, so nothing is cut mid-waveform. If a clip is
+     missing or Web Audio is unavailable, we fall back to the browser voice. */
   const canSpeak = 'speechSynthesis' in window;
-  let activeText = null;
-  let voices = [];
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+  let currentSource = null;
+  let currentWord = null;
+  const clipCache = new Map();
 
-  function loadVoices() {
-    if (!canSpeak) return;
-    const list = window.speechSynthesis.getVoices();
-    if (list && list.length) voices = list;
+  function getCtx() {
+    if (!AudioCtx) return null;
+    if (!audioCtx) audioCtx = new AudioCtx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
   }
 
-  if (canSpeak) {
-    loadVoices();
-    if (typeof window.speechSynthesis.addEventListener === 'function') {
-      window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
-    } else if ('onvoiceschanged' in window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+  function loadClip(word) {
+    if (clipCache.has(word)) return clipCache.get(word);
+    const ctx = getCtx();
+    if (!ctx) return Promise.resolve(null);
+    const p = fetch(`audio/${word}.wav`)
+      .then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('missing'))))
+      .then(buf => ctx.decodeAudioData(buf))
+      .catch(() => null);
+    clipCache.set(word, p);
+    return p;
+  }
+
+  function stopClip() {
+    if (currentSource) {
+      try { currentSource.stop(); } catch (_) { /* already ended */ }
+      currentSource = null;
     }
+    currentWord = null;
   }
 
-  function pickVoice() {
-    if (!voices.length) loadVoices();
-    return voices.find(v => v.lang === 'en-US' && /Samantha|Google US English|Ava|Allison|Alex/i.test(v.name)) ||
-           voices.find(v => v.lang === 'en-US') ||
-           voices.find(v => v.lang && v.lang.startsWith('en')) ||
-           null;
+  function markSpeaking(btn, on) {
+    if (!btn) return;
+    btn.classList.toggle('is-speaking', on);
   }
 
-  function stopSpeech() {
-    activeText = null;
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-      window.speechSynthesis.cancel();
-    }
-  }
-
-  function speak(text, btn) {
+  function speakWithVoice(text, btn) {
     if (!canSpeak) {
       if (btn) {
         btn.classList.add('is-speaking');
@@ -245,49 +253,61 @@
       }
       return;
     }
+    const voices = window.speechSynthesis.getVoices();
+    const pick =
+      voices.find(v => v.lang === 'en-US' && /Samantha|Google US English|Ava|Allison|Alex/i.test(v.name)) ||
+      voices.find(v => v.lang === 'en-US') ||
+      voices.find(v => v.lang.startsWith('en'));
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';
+    utter.rate = 0.86;
+    if (pick) utter.voice = pick;
+    if (btn) {
+      markSpeaking(btn, true);
+      utter.addEventListener('end', () => markSpeaking(btn, false));
+      utter.addEventListener('error', () => markSpeaking(btn, false));
+    }
+    window.speechSynthesis.speak(utter);
+  }
 
-    /* tapping the word that is already playing stops it — no restart */
-    if (activeText === text && window.speechSynthesis.speaking) {
-      stopSpeech();
-      document.querySelectorAll('.speak.is-speaking').forEach(b => b.classList.remove('is-speaking'));
+  function speak(text, btn) {
+    /* tapping the word that is already playing stops it */
+    if (currentWord === text) {
+      stopClip();
+      document.querySelectorAll('.speak.is-speaking').forEach(b => markSpeaking(b, false));
       return;
     }
 
-    const voice = pickVoice();
+    stopClip();
+    document.querySelectorAll('.speak.is-speaking').forEach(b => markSpeaking(b, false));
+    if (canSpeak) window.speechSynthesis.cancel();
 
-    const start = () => {
-      /* a closing period gives the voice a silent tail, so the engine's
-         teardown lands in silence instead of cutting a live waveform */
-      const utter = new SpeechSynthesisUtterance(/[.!?,;:]$/.test(text) ? text : text + '.');
-      utter.lang = 'en-US';
-      utter.rate = 0.86;
-      utter.pitch = 1;
-      utter.volume = 1;
-      if (voice) utter.voice = voice;
+    const ctx = getCtx();
+    markSpeaking(btn, true);
 
-      activeText = text;
-
-      if (btn) {
-        btn.classList.add('is-speaking');
-        const clear = () => {
-          btn.classList.remove('is-speaking');
-          if (activeText === text) activeText = null;
-        };
-        utter.addEventListener('end', clear);
-        utter.addEventListener('error', clear);
-        setTimeout(clear, 3000);
+    loadClip(text).then(buffer => {
+      if (!buffer || !ctx) {
+        markSpeaking(btn, false);
+        speakWithVoice(text, btn);
+        return;
       }
-      window.speechSynthesis.speak(utter);
-    };
+      /* a newer tap may have arrived while the clip was loading */
+      if (btn && !btn.classList.contains('is-speaking')) return;
 
-    /* switching words: let the old utterance finish tearing down first,
-       otherwise the audio device is cut mid-buffer and pops */
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-      window.speechSynthesis.cancel();
-      setTimeout(start, 70);
-    } else {
-      start();
-    }
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.onended = () => {
+        if (currentSource === src) {
+          currentSource = null;
+          currentWord = null;
+          markSpeaking(btn, false);
+        }
+      };
+      currentSource = src;
+      currentWord = text;
+      src.start();
+    });
   }
 
   /* ═══════════════════════════════════════════
