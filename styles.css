@@ -795,7 +795,7 @@ html.ready .intro-scroll{opacity:1}
   .cta .eyebrow{justify-content:flex-start}
   .cta .section-sub{margin-inline:0}
   .cta .hero-actions{margin-top:28px}
-  .intro-title{top:calc(50% + clamp(120px,19vh,180px))}
+  .intro-title{top:auto;bottom:15vh}
   .intro-brand{display:none}
   .intro-ui{justify-content:flex-end}
   .nav-inner{height:66px}
