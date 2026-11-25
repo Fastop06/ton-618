@@ -845,7 +845,8 @@ html.title-on .intro-title-sub{animation-play-state:running}
   .word-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media (max-width:920px){
-  .orb .arm:nth-child(8),.orb .arm:nth-child(9),.orb .arm:nth-child(12){display:none}
+  .orb .arm:nth-child(8),.orb .arm:nth-child(9),
+  .orb .arm:nth-child(10),.orb .arm:nth-child(12){display:none}
 }
 @media (max-width:800px){
   .nav-toggle{display:block}
