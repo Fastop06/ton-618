@@ -204,6 +204,38 @@
 
   /* ───────── speech ───────── */
   const canSpeak = 'speechSynthesis' in window;
+  let activeText = null;
+  let voices = [];
+
+  function loadVoices() {
+    if (!canSpeak) return;
+    const list = window.speechSynthesis.getVoices();
+    if (list && list.length) voices = list;
+  }
+
+  if (canSpeak) {
+    loadVoices();
+    if (typeof window.speechSynthesis.addEventListener === 'function') {
+      window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    } else if ('onvoiceschanged' in window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }
+
+  function pickVoice() {
+    if (!voices.length) loadVoices();
+    return voices.find(v => v.lang === 'en-US' && /Samantha|Google US English|Ava|Allison|Alex/i.test(v.name)) ||
+           voices.find(v => v.lang === 'en-US') ||
+           voices.find(v => v.lang && v.lang.startsWith('en')) ||
+           null;
+  }
+
+  function stopSpeech() {
+    activeText = null;
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+    }
+  }
 
   function speak(text, btn) {
     if (!canSpeak) {
@@ -213,27 +245,49 @@
       }
       return;
     }
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'en-US';
-    utter.rate = 0.86;
-    utter.pitch = 1;
 
-    const voices = window.speechSynthesis.getVoices();
-    const pick =
-      voices.find(v => v.lang === 'en-US' && /Samantha|Google US English|Ava|Allison|Alex/i.test(v.name)) ||
-      voices.find(v => v.lang === 'en-US') ||
-      voices.find(v => v.lang.startsWith('en'));
-    if (pick) utter.voice = pick;
-
-    if (btn) {
-      btn.classList.add('is-speaking');
-      const clear = () => btn.classList.remove('is-speaking');
-      utter.addEventListener('end', clear);
-      utter.addEventListener('error', clear);
-      setTimeout(clear, 2500);
+    /* tapping the word that is already playing stops it — no restart */
+    if (activeText === text && window.speechSynthesis.speaking) {
+      stopSpeech();
+      document.querySelectorAll('.speak.is-speaking').forEach(b => b.classList.remove('is-speaking'));
+      return;
     }
-    window.speechSynthesis.speak(utter);
+
+    const voice = pickVoice();
+
+    const start = () => {
+      /* a closing period gives the voice a silent tail, so the engine's
+         teardown lands in silence instead of cutting a live waveform */
+      const utter = new SpeechSynthesisUtterance(/[.!?,;:]$/.test(text) ? text : text + '.');
+      utter.lang = 'en-US';
+      utter.rate = 0.86;
+      utter.pitch = 1;
+      utter.volume = 1;
+      if (voice) utter.voice = voice;
+
+      activeText = text;
+
+      if (btn) {
+        btn.classList.add('is-speaking');
+        const clear = () => {
+          btn.classList.remove('is-speaking');
+          if (activeText === text) activeText = null;
+        };
+        utter.addEventListener('end', clear);
+        utter.addEventListener('error', clear);
+        setTimeout(clear, 3000);
+      }
+      window.speechSynthesis.speak(utter);
+    };
+
+    /* switching words: let the old utterance finish tearing down first,
+       otherwise the audio device is cut mid-buffer and pops */
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+      setTimeout(start, 70);
+    } else {
+      start();
+    }
   }
 
   /* ═══════════════════════════════════════════
