@@ -12,6 +12,7 @@
   /* ───────── nav: scroll state + progress ───────── */
   const nav = $('#nav');
   const progress = $('#progress');
+  const introEl = $('#intro');
   let scrollTick = false;
 
   function onScroll() {
@@ -19,7 +20,12 @@
     scrollTick = true;
     requestAnimationFrame(() => {
       const y = window.scrollY;
+      const vh = window.innerHeight;
       if (nav) nav.classList.toggle('is-scrolled', y > 24);
+      if (introEl) {
+        const k = Math.min(Math.max(y / (vh * 0.9), 0), 1);
+        document.documentElement.style.setProperty('--hero-out', k.toFixed(3));
+      }
       if (progress) {
         const max = document.documentElement.scrollHeight - window.innerHeight;
         progress.style.transform = `scaleX(${max > 0 ? Math.min(y / max, 1) : 0})`;

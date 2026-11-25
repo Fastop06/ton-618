@@ -67,7 +67,10 @@ ul{margin:0;padding:0;list-style:none}
   padding-top:100vh;padding-top:100dvh;
 }
 html.js.intro-running #site{opacity:0;pointer-events:none}
-html.js.ready #site{opacity:1;transition:opacity .8s ease .12s}
+html.js.ready #site{
+  opacity:1;
+  transition:opacity 1.15s cubic-bezier(.33,.9,.3,1) .18s;
+}
 html.no-js #site{padding-top:76px}
 
 .sr-only{
@@ -272,6 +275,7 @@ html.no-js [data-reveal]{opacity:1;transform:none}
   display:flex;flex-direction:column;
   transition:border-color .4s,transform .4s,background .4s;
   overflow:hidden;
+  min-height:230px;
 }
 .method-card::after{
   content:"";position:absolute;width:180px;height:180px;right:-60px;top:-80px;border-radius:50%;
@@ -280,7 +284,7 @@ html.no-js [data-reveal]{opacity:1;transform:none}
 }
 .method-card:hover{border-color:rgba(255,178,107,.28);transform:translateY(-5px)}
 .method-card:hover::after{opacity:1}
-.method-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:44px}
+.method-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
 .method-num{
   font-family:var(--display);font-style:italic;font-size:34px;line-height:1;
   color:var(--amber);opacity:.9;
@@ -293,6 +297,34 @@ html.no-js [data-reveal]{opacity:1;transform:none}
 .method-card p{margin-top:14px;color:var(--muted);font-size:14.5px;line-height:1.72;font-weight:300}
 .method-line{height:1px;background:var(--line);margin:26px 0 16px 0}
 .method-foot{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2)}
+
+/* orbit visual inside a method card — motion instead of paragraphs */
+.method-orb{
+  position:absolute;right:-26px;top:-30px;
+  width:168px;height:168px;border-radius:50%;
+  pointer-events:none;opacity:.7;
+  transition:opacity .5s,transform .8s var(--ease);
+}
+.method-card:hover .method-orb{opacity:1;transform:scale(1.04)}
+.method-orb i{
+  position:absolute;inset:0;border-radius:50%;
+  border:1px solid rgba(255,178,107,.14);
+  animation:orbSpin var(--dur,26s) linear infinite;
+}
+.method-orb i:nth-child(1){inset:6%;border-color:rgba(255,178,107,.2)}
+.method-orb i:nth-child(2){inset:22%;border-style:dashed;border-color:rgba(255,213,138,.16);--dur:19s;animation-direction:reverse}
+.method-orb i:nth-child(3){inset:38%;border-color:rgba(255,79,46,.22);--dur:13s}
+.method-orb i::before{
+  content:"";position:absolute;top:-2.5px;left:50%;width:5px;height:5px;
+  margin-left:-2.5px;border-radius:50%;
+  background:var(--amber);box-shadow:0 0 12px rgba(255,177,92,.95);
+}
+.method-orb b{
+  position:absolute;inset:47%;border-radius:50%;
+  background:#000;border:1px solid rgba(255,213,138,.5);
+  box-shadow:0 0 26px rgba(255,140,60,.35),inset 0 0 16px rgba(255,140,60,.2);
+}
+@keyframes orbSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 
 /* ─────────── words ─────────── */
 .section-words{
@@ -636,6 +668,17 @@ html.ready #intro{
   position:absolute;inset:0 0 auto 0;
   height:100vh;height:100dvh;
   z-index:40;pointer-events:none;
+  /* --hero-out is driven by scroll in app.js: the hero recedes gently */
+  opacity:calc(1 - var(--hero-out, 0) * .95);
+  transform:translate3d(0, calc(var(--hero-out, 0) * -56px), 0)
+            scale(calc(1 - var(--hero-out, 0) * .035));
+  transition:opacity .25s linear, transform .25s linear;
+}
+/* soft dissolve where the frame meets the first section */
+html.ready #intro::after{
+  content:"";position:absolute;left:0;right:0;bottom:-1px;height:26vh;
+  z-index:8;pointer-events:none;
+  background:linear-gradient(to bottom, rgba(5,5,5,0) 0%, rgba(5,5,5,.55) 48%, var(--bg) 100%);
 }
 html.no-js #intro{display:none}
 #intro-canvas{position:absolute;inset:0;z-index:1;width:100%;height:100%;display:block;pointer-events:none}

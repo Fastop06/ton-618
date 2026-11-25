@@ -2,7 +2,7 @@
    TON 618 — intro film
    a wall of English words → two waves → letters break,
    heat up and stretch into lines → accretion disk →
-   camera drifts right → TON 618
+   the disk keeps turning, forever, as the site's hero
    ═══════════════════════════════════════════════════════ */
 (() => {
   const intro    = document.getElementById('intro');
@@ -29,8 +29,12 @@
     drift: 7.9,
     title: 8.9,
     freeze: 9.55,
-    ready: 9.9
+    ready: 10.4
   };
+
+  /* ambient mode: after the page opens the disk never stops turning */
+  const SPIN_RATE = 0.11;     /* radians per second at full speed */
+  const SPIN_RAMP = 2.5;      /* seconds to ease the rotation in */
 
   const WORDS = (
     'the of and to in is you that it he was for on are as with his they at be this have from or one had by ' +
@@ -59,6 +63,9 @@
 
   let startTime = 0, lastFrame = 0, elapsed = 0, simTime = 0;
   let raf = 0, finished = false, titleShown = false;
+  let spin = 0;              /* ambient rotation of the disk, radians */
+  let ambT = 0;              /* ambient clock for pulses and twinkle */
+  let ambLast = 0, ambLive = false;
 
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const lerp  = (a, b, k) => a + (b - a) * k;
@@ -359,7 +366,7 @@
 
   function cameraAt(t) {
     const D = D0 / zoomAt(t);
-    const el = elevAt(t), az = azimAt(t);
+    const el = elevAt(t) + rad(1.2 * Math.sin(ambT * 0.3)), az = azimAt(t) + rad(1.5 * Math.sin(ambT * 0.21));
     const sh = shakeAt(t);
 
     const C = [
@@ -466,7 +473,8 @@
     const rh = holeRadius(t);
     const hp = projectPoint(0, 0, 0, cam, t);
     const hz = Math.max(hp.z, 0.04);
-    const rhs = F * rh / hz * U0 * (1 + 0.02 * Math.sin(t * 9));
+    const vt = t + ambT;
+    const rhs = F * rh / hz * U0 * (1 + 0.02 * Math.sin(t * 9) + 0.01 * Math.sin(ambT * 1.3));
     const waves = wavesAt(t);
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -481,7 +489,7 @@
     ctx.fillStyle = halo;
     ctx.fillRect(0, 0, W, H);
 
-    drawStars(t);
+    drawStars(t + ambT);
     drawWaves(waves, hp);
 
     lctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -501,7 +509,7 @@
         let wx = word.wx, wy = word.wy;
         const r = Math.hypot(wx, wy);
         const rl = lensRadius(r, rh);
-        const th = Math.atan2(wy, wx);
+        const th = Math.atan2(wy, wx) + spin;
         wx = rl * Math.cos(th);
         wy = rl * Math.sin(th);
 
@@ -540,7 +548,7 @@
           y = rl * Math.sin(L.th0);
           z = 0;
         } else {
-          const r = L.r, th = L.th, phi = L.flat * (Math.PI / 2);
+          const r = L.r, th = L.th + spin, phi = L.flat * (Math.PI / 2);
           x = r * Math.cos(th);
           y = r * Math.sin(th) * Math.cos(phi);
           z = -r * Math.sin(th) * Math.sin(phi);
@@ -644,51 +652,87 @@
 
   /* ───────── loop ───────── */
   function frame(now) {
-    if (finished) return;
-
     if (!startTime) {
       startTime = now;
       lastFrame = now;
+      ambLast = now;
     }
 
-    elapsed = (now - startTime) / 1000;
-    const dt = Math.min((now - lastFrame) / 1000, 0.05) || 0.0167;
+    const rawDt = (now - lastFrame) / 1000;
     lastFrame = now;
+    const dt = Math.min(rawDt, 0.05) || 0.0167;
 
-    if (elapsed < T.freeze) {
-      if (elapsed - simTime > 0.2) fastForward(elapsed);
-      else stepSim(elapsed, dt);
-      simTime = elapsed;
-    } else if (simTime < T.freeze - 0.05) {
-      fastForward(T.freeze);
-    }
+    if (!finished) {
+      elapsed = (now - startTime) / 1000;
 
-    draw(elapsed, dt);
+      if (elapsed < T.freeze) {
+        if (elapsed - simTime > 0.2) fastForward(elapsed);
+        else stepSim(elapsed, dt);
+        simTime = elapsed;
+      } else if (simTime < T.freeze - 0.05) {
+        fastForward(T.freeze);
+      }
 
-    if (!titleShown && elapsed >= T.title) {
-      titleShown = true;
-      root.classList.add('title-on');
-    }
+      draw(elapsed, dt);
 
-    if (elapsed >= T.ready) {
-      finishIntro();
-      return;
+      if (!titleShown && elapsed >= T.title) {
+        titleShown = true;
+        root.classList.add('title-on');
+      }
+
+      if (elapsed >= T.ready) settle();
+    } else {
+      /* the hero is off screen — stop drawing until it comes back */
+      if (!ambLive) {
+        raf = 0;
+        return;
+      }
+
+      const adt = Math.min(rawDt, 0.12);
+      ambT += adt;
+
+      const ramp = sstep(0, SPIN_RAMP, ambT);
+      spin += SPIN_RATE * ramp * adt;
+      draw(T.freeze, adt);
     }
 
     raf = requestAnimationFrame(frame);
   }
 
-  /* ───────── freeze the hero, open the page ───────── */
-  function finishIntro() {
+  function wake() {
+    if (!raf) {
+      lastFrame = performance.now();
+      ambLast = lastFrame;
+      raf = requestAnimationFrame(frame);
+    }
+  }
+
+  /* ───────── hand the frame over to the page ───────── */
+  function settle() {
     if (finished) return;
     finished = true;
-    cancelAnimationFrame(raf);
+    ambLast = performance.now();
     root.classList.add('title-on', 'ready');
     root.classList.remove('intro-running');
     clearTimeout(window.__introSafety);
     if (site) site.inert = false;
-    intro.inert = true;
+    installAmbient();
     document.dispatchEvent(new CustomEvent('ton618:ready'));
+  }
+
+  function installAmbient() {
+    ambLive = true;
+    ambT = 0;
+
+    if (!('IntersectionObserver' in window)) return;
+
+    const io = new IntersectionObserver(entries => {
+      for (const e of entries) {
+        ambLive = e.isIntersecting;
+        if (ambLive) wake();
+      }
+    }, { threshold: 0 });
+    io.observe(intro);
   }
 
   function skip() {
@@ -696,8 +740,10 @@
     fastForward(T.freeze);
     titleShown = true;
     root.classList.add('title-on');
+    spin = 0;
     draw(T.freeze, 1 / 60);
-    finishIntro();
+    elapsed = T.ready;
+    settle();
   }
 
   /* ───────── events ───────── */
@@ -722,7 +768,7 @@
     fastForward(T.freeze);
     draw(T.freeze, 1 / 60);
     titleShown = true;
-    finishIntro();
+    settle();
     return;
   }
 
