@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TON 618 — English, with gravity</title>
 <meta name="description" content="A different kind of English school. Ten quiet minutes a day, 618 essential words, and conversations that sound like you.">
-<meta name="theme-color" content="#060607">
+<meta name="theme-color" content="#050505">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23060607'/%3E%3Ccircle cx='32' cy='32' r='13' fill='%23000' stroke='%23ffb26b' stroke-width='2'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='7' fill='none' stroke='%23ff7a9c' stroke-width='1.4' opacity='.8' transform='rotate(-18 32 32)'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23050505'/%3E%3Ccircle cx='32' cy='32' r='13' fill='%23000' stroke='%23ffb15c' stroke-width='2'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='7' fill='none' stroke='%23ff5a36' stroke-width='1.4' opacity='.8' transform='rotate(-18 32 32)'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
 </head>
@@ -19,23 +19,25 @@
   document.documentElement.classList.add('intro-running');
   window.__introSafety = setTimeout(function () {
     if (!document.documentElement.classList.contains('ready')) {
-      document.documentElement.classList.remove('intro-running', 'intro-panning');
-      document.documentElement.classList.add('ready');
-      var el = document.getElementById('intro');
-      if (el) el.remove();
+      document.documentElement.classList.remove('intro-running');
+      document.documentElement.classList.add('ready', 'title-on');
+      var site = document.getElementById('site');
+      if (site) site.inert = false;
+      var intro = document.getElementById('intro');
+      if (intro) intro.inert = true;
     }
   }, 15000);
 </script>
 
 <!-- ══════════════ INTRO FILM ══════════════ -->
-<div id="intro" aria-hidden="true">
-  <canvas id="intro-canvas"></canvas>
-  <div class="intro-vignette"></div>
-  <div class="intro-grain"></div>
+<div id="intro">
+  <canvas id="intro-canvas" aria-hidden="true"></canvas>
+  <div class="intro-vignette" aria-hidden="true"></div>
+  <div class="intro-grain" aria-hidden="true"></div>
 
-  <div class="intro-title">
+  <div class="intro-title" aria-hidden="true">
     <div class="intro-title-main">
-      <span style="--i:0;--c:hsl(28 100% 64%)">T</span><span style="--i:1;--c:hsl(58 100% 64%)">O</span><span style="--i:2;--c:hsl(170 100% 62%)">N</span><span class="intro-gap"></span><span style="--i:4;--c:hsl(205 100% 64%)">6</span><span style="--i:5;--c:hsl(265 100% 68%)">1</span><span style="--i:6;--c:hsl(330 100% 66%)">8</span>
+      <span style="--i:0;--c:hsl(22 100% 62%)">T</span><span style="--i:1;--c:hsl(34 100% 64%)">O</span><span style="--i:2;--c:hsl(44 100% 68%)">N</span><span class="intro-gap"></span><span style="--i:4;--c:hsl(14 100% 60%)">6</span><span style="--i:5;--c:hsl(30 100% 66%)">1</span><span style="--i:6;--c:hsl(50 100% 72%)">8</span>
     </div>
     <div class="intro-title-sub">An English school</div>
   </div>
@@ -44,79 +46,37 @@
     <div class="intro-brand"><span class="brand-mark"></span>TON 618</div>
     <button class="intro-skip" id="intro-skip" type="button">Skip intro <span aria-hidden="true">→</span></button>
   </div>
+
+  <div class="intro-scroll" aria-hidden="true"><span class="scroll-line"></span>Scroll to explore</div>
 </div>
+
+<!-- ══════════════ NAV ══════════════ -->
+<header class="nav" id="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="#intro" aria-label="TON 618 home">
+      <span class="brand-mark"></span>
+      <span class="brand-name">TON 618</span>
+    </a>
+
+    <nav class="nav-links" id="navLinks" aria-label="Main">
+      <a href="#method">Method</a>
+      <a href="#vocabulary">Vocabulary</a>
+      <a href="#lessons">Lessons</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#practice" class="nav-cta">Start free</a>
+    </nav>
+
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+      <span></span><span></span>
+    </button>
+  </div>
+  <div class="scroll-progress" id="progress"></div>
+</header>
 
 <div id="site">
 
-  <!-- ══════════════ NAV ══════════════ -->
-  <header class="nav" id="nav">
-    <div class="container nav-inner">
-      <a class="brand" href="#top" aria-label="TON 618 home">
-        <span class="brand-mark"></span>
-        <span class="brand-name">TON 618</span>
-      </a>
-
-      <nav class="nav-links" id="navLinks" aria-label="Main">
-        <a href="#method">Method</a>
-        <a href="#vocabulary">Vocabulary</a>
-        <a href="#lessons">Lessons</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#practice" class="nav-cta">Start free</a>
-      </nav>
-
-      <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
-        <span></span><span></span>
-      </button>
-    </div>
-    <div class="scroll-progress" id="progress"></div>
-  </header>
-
   <main id="top">
-
-    <!-- ══════════════ HERO ══════════════ -->
-    <section class="hero">
-      <div class="container hero-grid">
-        <div class="hero-copy">
-          <p class="eyebrow"><span class="eyebrow-dot"></span>English, with gravity</p>
-          <h1>Words that<br><em>pull you in.</em></h1>
-          <p class="lede">A different kind of English school. Ten quiet minutes a day, 618 essential words, and conversations that sound like you — not a textbook.</p>
-
-          <div class="hero-actions">
-            <a class="btn btn-primary" href="#practice">Start learning free</a>
-            <a class="btn btn-ghost" href="#method">See the method</a>
-          </div>
-
-          <p class="hero-meta">Free forever plan&nbsp;&nbsp;·&nbsp;&nbsp;A1–C1&nbsp;&nbsp;·&nbsp;&nbsp;12,400 learners in orbit</p>
-        </div>
-
-        <div class="hero-visual">
-          <div class="orb" aria-hidden="true">
-            <div class="orb-glow"></div>
-            <div class="orb-halo"></div>
-            <div class="orb-ring r-out"></div>
-            <div class="orb-ring r-mid"></div>
-            <div class="orb-ring r-in"></div>
-
-            <div class="orb-core">
-              <span class="orb-kicker">TON</span>
-              <span class="orb-num">618</span>
-            </div>
-
-            <div class="arm" style="--r:.30;--dur:30s;--delay:-2s"><span class="orb-word is-warm">gravity</span></div>
-            <div class="arm" style="--r:.30;--dur:38s;--delay:-17s"><span class="orb-word">orbit</span></div>
-            <div class="arm" style="--r:.40;--dur:44s;--delay:-7s"><span class="orb-word">absorb</span></div>
-            <div class="arm" style="--r:.40;--dur:52s;--delay:-31s"><span class="orb-word is-cool">horizon</span></div>
-            <div class="arm" style="--r:.47;--dur:60s;--delay:-13s"><span class="orb-word">escape</span></div>
-            <div class="arm" style="--r:.47;--dur:58s;--delay:-44s"><span class="orb-word is-warm">signal</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="container hero-foot">
-        <span class="scroll-cue"><span class="scroll-line"></span>Scroll to explore</span>
-        <span class="hero-foot-note">No card. No placement test. No pressure.</span>
-      </div>
-    </section>
+    <h1 class="sr-only">TON 618 — English, with gravity</h1>
 
     <!-- ══════════════ MARQUEE ══════════════ -->
     <div class="marquee" aria-hidden="true">
@@ -325,7 +285,7 @@
             <div class="voice-stars" aria-hidden="true">★★★★★</div>
             <blockquote>“I stopped translating in my head around month three. That had never happened with any app before.”</blockquote>
             <figcaption>
-              <span class="avatar" style="--a1:#ffb26b;--a2:#ff7a9c">AR</span>
+              <span class="avatar" style="--a1:#ffc07a;--a2:#ff5a36">AR</span>
               <span><b>Alina R.</b><small>Product designer · B2</small></span>
             </figcaption>
           </figure>
@@ -334,7 +294,7 @@
             <div class="voice-stars" aria-hidden="true">★★★★★</div>
             <blockquote>“The reviews are weirdly well-timed. It's like the app knows what I'm about to forget.”</blockquote>
             <figcaption>
-              <span class="avatar" style="--a1:#8fd3ff;--a2:#a78bfa">MD</span>
+              <span class="avatar" style="--a1:#ffd58a;--a2:#ff8a4d">MD</span>
               <span><b>Marco D.</b><small>PhD student · C1</small></span>
             </figcaption>
           </figure>
@@ -343,7 +303,7 @@
             <div class="voice-stars" aria-hidden="true">★★★★★</div>
             <blockquote>“I used to freeze in meetings. Last week I led one — in English. Nobody noticed the grammar.”</blockquote>
             <figcaption>
-              <span class="avatar" style="--a1:#ffd166;--a2:#7bd88f">YT</span>
+              <span class="avatar" style="--a1:#ffcf7a;--a2:#ffb15c">YT</span>
               <span><b>Yuki T.</b><small>Engineering manager · B1</small></span>
             </figcaption>
           </figure>

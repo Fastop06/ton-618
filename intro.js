@@ -8,17 +8,12 @@
   const intro    = document.getElementById('intro');
   const canvas   = document.getElementById('intro-canvas');
   const skipBtn  = document.getElementById('intro-skip');
+  const site     = document.getElementById('site');
   const root     = document.documentElement;
   if (!intro || !canvas) return;
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduced) {
-    root.classList.remove('intro-running', 'intro-panning');
-    root.classList.add('ready');
-    clearTimeout(window.__introSafety);
-    setTimeout(() => intro.remove(), 30);
-    return;
-  }
+  if (site) site.inert = true;
 
   const ctx = canvas.getContext('2d', { alpha: true });
   const layer = document.createElement('canvas');
@@ -33,7 +28,8 @@
     collapse: 3.8,
     drift: 7.9,
     title: 8.9,
-    pan: 11.0
+    freeze: 9.55,
+    ready: 9.9
   };
 
   const WORDS = (
@@ -61,8 +57,8 @@
   let words = [], letters = [], stars = [];
   let totalLetters = 0, eaten = 0;
 
-  let startTime = 0, lastFrame = 0, elapsed = 0;
-  let raf = 0, panning = false, finished = false, titleShown = false, titleAt = 0;
+  let startTime = 0, lastFrame = 0, elapsed = 0, simTime = 0;
+  let raf = 0, finished = false, titleShown = false;
 
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const lerp  = (a, b, k) => a + (b - a) * k;
@@ -116,8 +112,8 @@
         const wyPx = y;
         const rnd = Math.random();
         const color = rnd < 0.075 ? [255, 192, 138]
-                    : rnd < 0.13  ? [148, 198, 255]
-                    : [208, 212, 222];
+                    : rnd < 0.13  ? [255, 213, 138]
+                    : [224, 216, 204];
 
         const word = {
           text: it.text,
@@ -213,7 +209,12 @@
     buildWall();
     makeStars();
 
-    if (elapsed > 0.2 && elapsed < T.pan && !finished) fastForward(elapsed);
+    if (finished) {
+      fastForward(T.freeze);
+      draw(T.freeze, 1 / 60);
+    } else if (elapsed > 0.2 && elapsed < T.ready) {
+      fastForward(elapsed);
+    }
   }
 
   /* ───────── physics ───────── */
@@ -262,6 +263,7 @@
     for (let s = 0; s < t; s += stepDt) {
       stepSim(Math.min(s + stepDt, t), Math.min(stepDt, t - s));
     }
+    simTime = t;
   }
 
   function lensRadius(r, rh) {
@@ -398,7 +400,7 @@
   function drawStars(t) {
     for (const s of stars) {
       const a = s.a * (0.6 + 0.4 * Math.sin(t * s.sp + s.p));
-      ctx.fillStyle = `rgba(220,225,240,${a})`;
+      ctx.fillStyle = `rgba(245,236,222,${a})`;
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, TAU);
       ctx.fill();
@@ -469,7 +471,7 @@
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#050507';
+    ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, W, H);
 
     const halo = ctx.createRadialGradient(hp.x, hp.y, 0, hp.x, hp.y, Math.max(W, H) * 0.8);
@@ -642,7 +644,7 @@
 
   /* ───────── loop ───────── */
   function frame(now) {
-    if (panning) return;
+    if (finished) return;
 
     if (!startTime) {
       startTime = now;
@@ -653,49 +655,49 @@
     const dt = Math.min((now - lastFrame) / 1000, 0.05) || 0.0167;
     lastFrame = now;
 
-    stepSim(elapsed, dt);
+    if (elapsed < T.freeze) {
+      if (elapsed - simTime > 0.2) fastForward(elapsed);
+      else stepSim(elapsed, dt);
+      simTime = elapsed;
+    } else if (simTime < T.freeze - 0.05) {
+      fastForward(T.freeze);
+    }
+
     draw(elapsed, dt);
 
     if (!titleShown && elapsed >= T.title) {
       titleShown = true;
-      titleAt = elapsed;
       root.classList.add('title-on');
     }
 
-    if (elapsed >= T.pan && titleShown && elapsed - titleAt >= 1.5) {
-      panNow();
+    if (elapsed >= T.ready) {
+      finishIntro();
       return;
     }
 
     raf = requestAnimationFrame(frame);
   }
 
-  /* ───────── camera pan into the site ───────── */
-  function panNow() {
-    if (panning || finished) return;
-    panning = true;
+  /* ───────── freeze the hero, open the page ───────── */
+  function finishIntro() {
+    if (finished) return;
+    finished = true;
     cancelAnimationFrame(raf);
-    root.classList.add('title-on');
+    root.classList.add('title-on', 'ready');
+    root.classList.remove('intro-running');
     clearTimeout(window.__introSafety);
-    root.classList.add('intro-panning');
-
-    setTimeout(() => {
-      root.classList.add('ready');
-    }, 80);
-
-    setTimeout(() => {
-      finished = true;
-      root.classList.remove('intro-running', 'intro-panning', 'title-on');
-      root.classList.add('ready');
-      intro.remove();
-      document.dispatchEvent(new CustomEvent('ton618:ready'));
-    }, 1560);
+    if (site) site.inert = false;
+    intro.inert = true;
+    document.dispatchEvent(new CustomEvent('ton618:ready'));
   }
 
   function skip() {
-    if (panning) return;
+    if (finished) return;
+    fastForward(T.freeze);
+    titleShown = true;
     root.classList.add('title-on');
-    panNow();
+    draw(T.freeze, 1 / 60);
+    finishIntro();
   }
 
   /* ───────── events ───────── */
@@ -715,5 +717,14 @@
 
   /* ───────── go ───────── */
   resize();
+
+  if (reduced) {
+    fastForward(T.freeze);
+    draw(T.freeze, 1 / 60);
+    titleShown = true;
+    finishIntro();
+    return;
+  }
+
   raf = requestAnimationFrame(frame);
 })();

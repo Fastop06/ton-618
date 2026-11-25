@@ -75,22 +75,6 @@
     revealEls.forEach(el => el.classList.add('is-in'));
   }
 
-  /* ───────── hero orbit parallax ───────── */
-  const heroVisual = $('.hero-visual');
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (heroVisual && !reduced) {
-    let px = 0, py = 0, raf = 0;
-    window.addEventListener('pointermove', e => {
-      px = (e.clientX / window.innerWidth - 0.5) * 14;
-      py = (e.clientY / window.innerHeight - 0.5) * 14;
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        heroVisual.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0)`;
-        raf = 0;
-      });
-    }, { passive: true });
-  }
-
   /* ═══════════════════════════════════════════
      WORD BANK
      ═══════════════════════════════════════════ */
